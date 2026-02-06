@@ -3,11 +3,38 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>My Game</title>
+    <title>Dua ngua</title>
     <link rel="stylesheet" href="style.css" />
+    <!-- Bootstrap CSS -->
+    <link
+      rel="stylesheet"
+      href="node_modules/bootstrap/dist/css/bootstrap.min.css"
+    />
   </head>
   <body>
-    <canvas id="gameCanvas"></canvas>
-    <script src="game.js"></script>
+    <script type="module" src="game.js"></script>
+    <div class="d-flex flex-column">
+      <div class="top-side">
+        <img id="tower" src="assets/tower.png" alt="Tower" />
+        <img id="bush" src="assets/bush.png" alt="Bush" />
+        <div class="fence-b" id="fence-b1"></div>
+        <div class="fence-b" id="fence-b2"></div>
+      </div>
+
+      <div class="race-side align-content-center">
+        <div id="race-box">
+          <img id="road-lines" src="assets/road-lines.png" alt="Road Lines" />
+          <img id="finish-line" src="assets/finish-line.png" alt="Finish Line" />
+          <button id="start-button" class="btn btn-primary">Start</button>
+          <button id="restart-button" class="btn btn-primary">Restart</button>
+          <canvas id="race-canvas"></canvas>
+        </div>
+      </div>
+
+      <div class="bottom-side">
+        <div class="fence-a" id="fence-a1"></div>
+        <div class="fence-a" id="fence-a2"></div>
+      </div>
+    </div>
   </body>
 </html>
