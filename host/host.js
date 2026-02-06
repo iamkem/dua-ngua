@@ -212,6 +212,21 @@ function initGame(roomId) {
                 });
             }
         }
+
+        // Nút Giải tán phòng (Host Only)
+        const manageBtn = document.getElementById("manage-room-btn");
+        if (manageBtn) {
+            manageBtn.onclick = async function () {
+                if (confirm("CẢNH BÁO: Bạn có chắc chắn muốn GIẢI TÁN PHÒNG?\nTất cả kết nối sẽ bị ngắt.")) {
+                    try {
+                        await deleteRoomCompletely(roomId);
+                        window.location.reload();
+                    } catch (e) {
+                        alert("Lỗi giải tán phòng: " + e.message);
+                    }
+                }
+            };
+        }
     }
 
     // --- COMMON LOGIC (HOST & VIEWER) ---
@@ -247,6 +262,12 @@ function initGame(roomId) {
             manageBtn.onclick = async function () {
                 if (confirm("Bạn có chắc chắn muốn rời phòng?")) {
                     try {
+                        const currentUser = sessionStorage.getItem("racing_user");
+                        if (!currentUser) {
+                            window.location.href = "../client/index.html";
+                            return;
+                        }
+
                         const playerRef = db.collection("games").doc(roomId).collection("players").doc(currentUser);
                         const pDoc = await playerRef.get(); // Lấy data mới nhất từ DB
                         let finalBalance = 0;
@@ -263,23 +284,10 @@ function initGame(roomId) {
                         // Xóa người chơi khỏi phòng
                         await playerRef.delete();
 
-                        // Cập nhật lại số dư vào SessionStorage để Clientside nhận diện
-                        // Lưu ý: Client.js khi init sẽ load từ đây nếu chưa join phòng
-                        // Nhưng Client.js hiện tại ưu tiên load từ DB khi join phòng.
-                        // Khi về trang chủ (room list), ta có thể hiển thị số dư này tạm thời?
-                        // Thực tế Client Index chưa có chỗ hiện số dư khi chưa vào phòng.
-                        // Nhưng khi vào phòng khác, nó sẽ lấy số dư (thường là reset 1000 or load from somewhere if we implement user profile).
-                        // Với logic hiện tại "currentBalance = 1000" ở Client.js dòng 133 khi vào phòng mới, 
-                        // thì việc hoàn tiền này chỉ mang tính chất "an ủi" vì sang phòng mới lại reset 1000.
-                        // TUY NHIÊN, ta cứ set lại 1000 cho đúng logic "rời là mất/reset".
-                        // Nhưng USER yêu cầu: "bị trừ luôn tiền đã cược" là BUG. Nghĩa là họ muốn HOÀN TIỀN?
-                        // USER nói: "bị trừ luôn tiền đã cược... (là lỗi)". Ý là rời phòng thì mất tiền đó.
-                        // Giờ ta hoàn lại tiền vảo túi. (Dù sau này vào phòng mới có reset hay không thì tính sau).
+                        // 3. LƯU SỐ DƯ ĐỂ DÙNG CHO PHÒNG KHÁC
+                        sessionStorage.setItem("racing_balance", finalBalance);
 
-                        // QUAN TRỌNG: Client.js đang hardcode reset 1000 khi vào phòng mới (dòng 133). 
-                        // Nên việc hoàn tiền ở đây chỉ có ý nghĩa nếu ta sửa Client.js để không reset.
-                        // Nhưng trước mắt cứ thực hiện thao tác XÓA KHỎI DB để Host update list.
-
+                        // Quay về màn chọn cược
                         window.location.href = "../client/index.html";
                     } catch (e) {
                         console.error("Lỗi rời phòng:", e);
@@ -391,6 +399,13 @@ function initGame(roomId) {
         if (startButton) startButton.style.display = "none";
         if (document.getElementById("game-status-text"))
             document.getElementById("game-status-text").innerText = "Chờ chủ phòng...";
+
+        // Đổi TEXT nút kết quả thành "Thoát"
+        const resultBtn = document.getElementById("result-btn");
+        if (resultBtn) {
+            resultBtn.innerText = "Thoát";
+            resultBtn.classList.replace("btn-primary", "btn-secondary"); // Đổi màu xám cho hợp ngữ cảnh thoát
+        }
 
         // Lắng nghe phòng
         db.collection("games").doc(roomId).onSnapshot(doc => {

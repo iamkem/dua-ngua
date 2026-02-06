@@ -128,12 +128,16 @@ async function joinRoom(roomId) {
     if (doc.exists) {
       currentBalance = doc.data().balance;
     } else {
-      // Reset balance mỗi khi vào phòng mới cho công bằng (hoặc giữ lại tùy logic)
-      // Ở đây ta set lại 1000 cho mỗi phòng mới
-      currentBalance = 1000;
+      // Logic mới: Giữ lại số dư nếu chuyển phòng
+      const savedBalance = sessionStorage.getItem("racing_balance");
+      currentBalance = savedBalance ? parseInt(savedBalance) : 1000;
+
+      // Nếu không có balance hợp lệ (NaN/0/etc) thì fallback về 1000? 
+      if (isNaN(currentBalance)) currentBalance = 1000;
+
       await playerRef.set({
         name: currentUser,
-        balance: 1000,
+        balance: currentBalance,
         betHorse: null,
         betAmount: 0
       });
