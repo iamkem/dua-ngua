@@ -1,4 +1,4 @@
-export default class RoadLines {
+class RoadLines {
   constructor(id) {
     this.roadLines = document.getElementById(id);
     this.position = 0;
@@ -30,3 +30,5 @@ export default class RoadLines {
     this.stop = true;
   }
 }
+
+module.exports = RoadLines;

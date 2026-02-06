@@ -1,4 +1,4 @@
-export default class Tower {
+class Tower {
   constructor(id) {
     this.position = 0;
     this.tower = document.getElementById(id);
@@ -30,3 +30,5 @@ export default class Tower {
     this.stop = true;
   }
 }
+
+module.exports = Tower;

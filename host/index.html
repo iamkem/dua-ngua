@@ -1,10 +1,137 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đua ngựa</title>
+  <link rel="stylesheet" href="../style.css" />
+  <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+  <script>
+    // Hàm xử lý quay lại hoặc đua mới tùy vai trò
+    function handleResultAction() {
+      const urlParams = new URLSearchParams(window.location.search);
+      if (urlParams.get('role') === 'viewer') {
+        window.location.href = "../client/index.html";
+      } else {
+        // HOST: Gọi hàm reset game (soft reset)
+        if (window.resetHostGame) {
+          window.resetHostGame();
+        } else {
+          console.error("Hàm resetHostGame chưa được nạp");
+          window.location.reload(); // Fallback
+        }
+      }
+    }
+  </script>
+  <style>
+    /* Ép nút bấm luôn ở trên cùng và có thể click */
+    #start-button {
+      position: relative !important;
+      z-index: 99999 !important;
+      pointer-events: auto !important;
+      cursor: pointer !important;
+    }
+
+    #game-hud {
+      z-index: 99990 !important;
+      pointer-events: none;
+      /* Cho phép click xuyên qua HUD */
+    }
+
+    #game-hud .card {
+      pointer-events: auto;
+      /* Nhưng card chứa nút thì phải nhận click */
+    }
+  </style>
 </head>
+
 <body>
-$END$
+  <div class="d-flex flex-column">
+    <!-- CREATE ROOM OVERLAY -->
+    <div id="create-room-overlay"
+      class="position-absolute top-0 start-0 w-100 h-100 d-flex justify-content-center align-items-center bg-dark"
+      style="z-index: 200000;">
+      <div class="card p-5 shadow-lg text-center" style="min-width: 400px;">
+        <h2 class="mb-4">TẠO PHÒNG ĐUA</h2>
+        <input type="text" id="room-name-input" class="form-control mb-3"
+          placeholder="Nhập tên phòng... (VD: Giải đua F1)" autofocus>
+        <button onclick="window.handleCreateRoom()" class="btn btn-primary btn-lg w-100">TẠO PHÒNG & VÀO</button>
+      </div>
+    </div>
+    <div class="top-side">
+      <img id="tower" src="../assets/tower.png" alt="Tower" />
+      <img id="bush" src="../assets/bush.png" alt="Bush" />
+      <div class="fence-b" id="fence-b1"></div>
+      <div class="fence-b" id="fence-b2"></div>
+    </div>
+
+    <div class="race-side align-content-center">
+      <div id="race-box">
+        <canvas id="race-canvas" style="z-index: 1;"></canvas>
+        <img id="road-lines" src="../assets/road-lines.png" alt="Road Lines" style="z-index: 2;" />
+        <img id="finish-line" src="../assets/finish-line.png" alt="Finish Line" style="z-index: 2;" />
+
+        <div id="game-hud"
+          class="position-absolute top-0 start-0 w-100 h-100 d-flex flex-column justify-content-center align-items-center">
+          <h1 class="text-white fw-bold mb-4" style="text-shadow: 2px 2px 0 #000;">ĐUA NGỰA ONLINE</h1>
+          <div class="card p-4 shadow-lg" style="min-width: 400px; background: rgba(255,255,255,0.95);">
+            <h4 class="text-center mb-3 border-bottom pb-2">Trạng thái: <span id="game-status-text"
+                class="text-primary">Sẵn sàng</span></h4>
+            <div class="mb-3">
+              <h6 class="text-muted">Người chơi đã tham gia (<span id="player-count">0</span>):</h6>
+              <ul id="connected-players-list" class="list-group list-group-flush"
+                style="max-height: 150px; overflow-y: auto;">
+                <li class="list-group-item text-muted fst-italic text-center">Đang nạp...</li>
+              </ul>
+            </div>
+            <div class="d-grid gap-2">
+              <button id="host-bet-btn" class="btn btn-warning btn-lg fw-bold mb-2">Cược của tôi (1000$)</button>
+              <button id="start-button" class="btn btn-success btn-lg fw-bold">BẮT ĐẦU ĐUA</button>
+              <div class="d-flex justify-content-between align-items-center mt-2">
+                <span class="text-muted small">Mã phòng: <strong id="display-room-id">...</strong></span>
+                <button id="manage-room-btn" class="btn btn-outline-danger btn-sm">Giải tán phòng</button>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div id="result-overlay"
+          class="position-absolute top-0 start-0 w-100 h-100 d-none flex-column justify-content-center align-items-center"
+          style="z-index: 200; background: rgba(0,0,0,0.8);">
+          <h1 class="text-warning display-3 fw-bold mb-3" style="text-shadow: 3px 3px 0 #000;">KẾT QUẢ</h1>
+          <div class="card p-4 text-center">
+            <h2 id="winner-text" class="mb-4 text-dark">Ngựa số X thắng!</h2>
+            <button onclick="handleResultAction()" class="btn btn-primary btn-lg">Tiếp tục</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="bottom-side">
+      <div class="fence-a" id="fence-a1"></div>
+      <div class="fence-a" id="fence-a2"></div>
+    </div>
+
+    <!-- HOST BETTING OVERLAY -->
+    <div id="host-bet-modal"
+      class="position-absolute top-0 start-0 w-100 h-100 d-none justify-content-center align-items-center bg-dark"
+      style="z-index: 300000; background: rgba(0,0,0,0.9);">
+      <div class="container bg-white p-4 rounded shadow-lg"
+        style="max-width: 800px; max-height: 90vh; overflow-y: auto;">
+        <div class="d-flex justify-content-between align-items-center mb-4">
+          <h2>Đặt cược của Host</h2>
+          <h4 class="text-success">Tiền: <span id="host-balance-display">1000</span>$</h4>
+          <button id="close-bet-modal" class="btn btn-secondary">Đóng</button>
+        </div>
+        <div class="row g-3" id="host-horses-grid">
+          <!-- JS sẽ render ngựa vào đây -->
+        </div>
+      </div>
+    </div>
+  </div>
+  <!-- Script được nạp ở cuối -->
+  <script src="host.js"></script>
 </body>
+
 </html>

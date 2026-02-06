@@ -1,4 +1,4 @@
-export default class Player {
+class Player {
   constructor(x, y, number, speed = 0) {
     this.x = x;
     this.y = y;
@@ -8,9 +8,9 @@ export default class Player {
     this.number = number; // Số của player
 
     // Các khung hình hoạt ảnh
-    this.frames = window.utils.range(1, 5).map((index) => {
+    this.frames = Array.from({ length: 4 }, (_, i) => i + 1).map((index) => {
       const img = new Image();
-      img.src = `../assets/players/${this.number}/${index}.png`;
+      img.src = `../assets/horses/${this.number}/${index}.png`;
       return img;
     });
 
@@ -45,3 +45,5 @@ export default class Player {
     this.x += this.speed / 4;
   }
 }
+
+module.exports = Player;

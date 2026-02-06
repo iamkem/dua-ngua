@@ -1,9 +1,9 @@
-import Bush from "./bush.js";
-import RoadLines from "./road_lines.js";
-import Fence from "./fence.js";
-import Tower from "./tower.js";
+const Bush = require("./bush.js");
+const RoadLines = require("./road_lines.js");
+const Fence = require("./fence.js");
+const Tower = require("./tower.js");
 
-export default class Map {
+class Map {
   constructor() {
     this.bush = new Bush("bush");
     this.roadLines = new RoadLines("road-lines");
@@ -28,3 +28,5 @@ export default class Map {
     this.tower.stopAnimation();
   }
 }
+
+module.exports = Map;

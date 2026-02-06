@@ -1,4 +1,4 @@
-export default class Bush {
+class Bush {
   constructor(id) {
     this.bush = document.getElementById(id);
     this.position = 0;
@@ -31,3 +31,5 @@ export default class Bush {
     this.stop = true;
   }
 }
+
+module.exports = Bush;

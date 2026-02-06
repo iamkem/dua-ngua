@@ -1,10 +1,115 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="en">
+
 <head>
-  <meta charset="UTF-8">
-  <title>$Title$</title>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Đua ngựa - Người chơi</title>
+  <!-- Bootstrap CSS -->
+  <link rel="stylesheet" href="../node_modules/bootstrap/dist/css/bootstrap.min.css" />
+  <link rel="stylesheet" href="../style.css" />
+  <style>
+    body {
+      background-color: #f8f9fa;
+      /* Light gray background for betting interface */
+      overflow-y: auto;
+      /* Allow scrolling */
+    }
+
+    .horse-card {
+      transition: transform 0.2s;
+    }
+
+    .horse-card:hover {
+      transform: scale(1.05);
+    }
+
+    .horse-img {
+      height: 80px;
+      object-fit: contain;
+      image-rendering: pixelated;
+      /* Keep pixel art crisp */
+      background-color: #5dba61;
+      /* Grass-like background */
+    }
+
+    .selected-bet {
+      border: 3px solid #ffc107;
+    }
+
+    /* Hide elements from the race view that might have leaked if using shared css */
+    .top-side,
+    .race-side,
+    .bottom-side {
+      display: none;
+    }
+  </style>
 </head>
+
 <body>
-$END$
+  <div class="container py-4">
+
+    <!-- Login Screen -->
+    <div id="login-screen" class="card shadow-sm mx-auto" style="max-width: 400px; margin-top: 10vh;">
+      <div class="card-body text-center">
+        <h2 class="mb-4">Tham gia Đua Ngựa</h2>
+        <div class="mb-3">
+          <input type="text" id="username-input" class="form-control form-control-lg" placeholder="Nhập tên của bạn...">
+        </div>
+        <button id="login-btn" class="btn btn-primary btn-lg w-100">Tiếp tục</button>
+      </div>
+    </div>
+
+    <!-- Room List Screen (Hidden by default) -->
+    <div id="room-list-screen" class="d-none">
+      <h2 class="text-center mb-4">Danh sách phòng đua</h2>
+      <div id="rooms-container" class="row">
+        <!-- Room cards here -->
+        <div class="col-12 text-center text-muted">Đang tải danh sách phòng...</div>
+      </div>
+      <div class="text-center mt-4">
+        <button onclick="window.location.reload()" class="btn btn-secondary">Làm mới</button>
+      </div>
+    </div>
+
+    <!-- Betting Screen (Hidden by default) -->
+    <div id="betting-screen" class="d-none">
+      <!-- Header Info -->
+      <div class="row mb-4 align-items-center bg-white p-3 rounded shadow-sm">
+        <div class="col">
+          <h4 class="m-0">Người chơi: <span id="player-name" class="text-primary fw-bold"></span></h4>
+        </div>
+        <div class="col-auto">
+          <h4 class="m-0">Tiền: <span id="player-balance" class="text-success fw-bold">1000</span> $</h4>
+        </div>
+      </div>
+
+      <!-- Status Bar -->
+      <div class="alert alert-info text-center fw-bold" id="game-status">
+        Đang chờ ván mới...
+      </div>
+
+      <!-- Online Players List -->
+      <div class="card mb-4 shadow-sm">
+        <div class="card-header bg-light d-flex justify-content-between align-items-center">
+          <span class="fw-bold">Người chơi trong phòng</span>
+          <span class="badge bg-secondary" id="client-player-count">0</span>
+        </div>
+        <ul class="list-group list-group-flush" id="client-players-list" style="max-height: 150px; overflow-y: auto;">
+          <li class="list-group-item text-muted text-center fst-italic">Đang tải...</li>
+        </ul>
+      </div>
+
+      <!-- Horses Grid -->
+      <h5 class="mb-3">Chọn ngựa để đặt cược:</h5>
+      <div class="row g-3" id="horses-list">
+        <!-- Horses will be generated here by JS -->
+      </div>
+    </div>
+
+  </div>
+
+  <script src="client.js"></script>
 </body>
+
 </html>

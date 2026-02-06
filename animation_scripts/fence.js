@@ -1,4 +1,4 @@
-export default class Fence {
+class Fence {
   constructor(id) {
     this.position = 0;
     this.fence1 = document.getElementById(`${id}1`);
@@ -32,3 +32,5 @@ export default class Fence {
     this.stop = true;
   }
 }
+
+module.exports = Fence;
