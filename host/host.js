@@ -546,7 +546,8 @@ function initGame(roomId) {
 
         players.forEach(p => {
             p.x = 0;
-            p.speed = (currentRandom() * 2) + 2;
+            // Slow down start speed (was * 2 + 2)
+            p.speed = (currentRandom() * 1.5) + 1;
         });
     }
 
@@ -555,7 +556,8 @@ function initGame(roomId) {
 
         players.forEach(p => {
             p.move();
-            if (currentRandom() < 0.02) p.speed = (currentRandom() * 3) + 2;
+            // Slow down the race (was * 3 + 2)
+            if (currentRandom() < 0.02) p.speed = (currentRandom() * 2) + 1;
 
             if (!isFinishApproaching && p.x > canvas.width * 0.7) isFinishApproaching = true;
 
@@ -579,7 +581,7 @@ function initGame(roomId) {
         });
     }
 
-    function finishGame(winnerId) {
+    async function finishGame(winnerId) {
         if (isFinished) return;
         isFinished = true;
         isRacing = false;
@@ -594,7 +596,7 @@ function initGame(roomId) {
         resultOverlay.classList.remove("d-none");
         resultOverlay.classList.add("d-flex");
 
-        // Handle Host Win Logic
+        // --- HOST WIN LOGIC ---
         if (!isViewer && myBetHorse) {
             if (myBetHorse === winnerId) {
                 const win = myBetAmount * 5;
@@ -604,14 +606,59 @@ function initGame(roomId) {
                 // Host thua
             }
             // Update balance UI & DB
-            document.getElementById("host-balance-display").innerText = hostBalance;
+            document.getElementById("host-balance-display").innerText = formatBalance(hostBalance);
             document.getElementById("host-bet-btn").innerText = `Cược (${hostBalance}$)`;
 
-            db.collection("games").doc(roomId).collection("players").doc("HOST").update({
-                balance: hostBalance,
-                betAmount: 0,
-                betHorse: null
-            });
+            try {
+                await db.collection("games").doc(roomId).collection("players").doc("HOST").update({
+                    balance: hostBalance,
+                    betAmount: 0,
+                    betHorse: null
+                });
+            } catch (e) {
+                console.error("Lỗi cập nhật balance Host:", e);
+            }
+        }
+
+        // --- VIEWER WIN LOGIC ---
+        if (isViewer) {
+            const currentUser = sessionStorage.getItem("racing_user");
+            if (currentUser) {
+                try {
+                    const playerRef = db.collection("games").doc(roomId).collection("players").doc(currentUser);
+                    const pDoc = await playerRef.get();
+
+                    if (pDoc.exists) {
+                        const pData = pDoc.data();
+                        const myBetHorse = pData.betHorse;
+                        const myBetAmount = pData.betAmount;
+                        let newBalance = pData.balance;
+
+                        let msg = "";
+                        if (myBetHorse === winnerId) {
+                            const win = myBetAmount * 5;
+                            newBalance += win;
+                            msg = `CHÚC MỪNG! Bạn đã thắng ${win}$!`;
+                        } else if (myBetHorse) {
+                            msg = `Rất tiếc, bạn đã thua cược.`;
+                        } else {
+                            msg = `Bạn không tham gia cược ván này.`;
+                        }
+
+                        // Cập nhật lại DB
+                        await playerRef.update({
+                            balance: newBalance,
+                            betAmount: 0,
+                            betHorse: null
+                        });
+
+                        sessionStorage.setItem("racing_balance", newBalance);
+                        if (myBetHorse) alert(msg + `\nSố dư hiện tại: ${newBalance}$`);
+                    }
+                } catch (e) {
+                    console.error("Lỗi xử lý kết quả Viewer:", e);
+                }
+            }
         }
     }
 
