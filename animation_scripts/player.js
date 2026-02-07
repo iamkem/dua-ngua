@@ -18,6 +18,22 @@ class Player {
     this.frameSpeed = 20; // Tốc độ chuyển frame
     this.frameCount = 0; // Bộ đếm để thay đổi khung hình
     this.stop = false; // Dừng hoạt ảnh
+
+    // Sound for this horse
+    this.gallopSound = new Audio("../assets/sounds/horse-galloping.mp3");
+    this.gallopSound.loop = true;
+    this.gallopSound.volume = 0.3; // Lower volume for individual horse
+    // Randomize pitch/speed slightly for realistic herd effect
+    this.gallopSound.playbackRate = 1.5 + Math.random() * 0.5;
+  }
+
+  playAudio() {
+    this.gallopSound.play().catch(() => { });
+  }
+
+  stopAudio() {
+    this.gallopSound.pause();
+    this.gallopSound.currentTime = 0;
   }
 
   draw(context) {

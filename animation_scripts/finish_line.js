@@ -1,25 +1,32 @@
 class FinishLine {
-  constructor(id, position = 0) {
+  constructor(id) {
     this.finishLine = document.getElementById(id);
-
-    this.positon = position;
-    this.initialPosition = position;
-
-    this.finishLine.style.opacity = 0;
+    this.position = 100; // Start at 100% (Right edge)
+    this.initialPosition = 100;
+    this.speed = 0.18; // Speed in % per frame. Reduced from 0.5 for realistic look
     this.stop = false;
+
+    // Reset style initial
+    this.finishLine.style.opacity = 0;
+    this.finishLine.style.left = "100%";
+    // Reset any transform used before
+    this.finishLine.style.transform = "none";
   }
 
   animate(callback) {
     if (!this.stop) {
       this.finishLine.style.opacity = 1;
+      this.position -= this.speed;
 
-      // Tăng tốc độ di chuyển ngược lại để gặp ngựa (từ 0.08 lên 2)
-      const pos = (this.positon -= 2);
+      this.finishLine.style.left = `${this.position}%`;
 
-      this.finishLine.style.transform = `translateX(${pos}px)`;
-
-      if (callback) callback(pos);
+      if (callback) callback(this.getPixelPosition());
     }
+  }
+
+  getPixelPosition() {
+    // Return current X position in pixels for collision check
+    return (this.position / 100) * window.innerWidth;
   }
 
   stopAnimation() {
@@ -28,9 +35,9 @@ class FinishLine {
 
   reset() {
     this.stop = false;
-    this.positon = this.initialPosition;
+    this.position = this.initialPosition;
     this.finishLine.style.opacity = 0;
-    this.finishLine.style.transform = `translateX(${this.initialPosition}px)`;
+    this.finishLine.style.left = "100%";
   }
 }
 

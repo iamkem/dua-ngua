@@ -9,11 +9,12 @@ class Tower {
     if (!this.stop) {
       this.position -= 0.12;
 
-      if (this.position < window.innerWidth * -0.3) {
+      const rect = this.tower.getBoundingClientRect();
+      if (rect.right < 0) {
         this.position = 100;
       }
 
-      this.tower.style.transform = `translateX(${this.position}%)`;
+      this.tower.style.left = `${this.position}%`;
 
       requestAnimationFrame(this.animate.bind(this));
     } else {

@@ -9,7 +9,8 @@ class Bush {
     if (!this.stop) {
       this.position -= 0.13;
 
-      if (this.position < window.innerWidth * -0.2) {
+      const rect = this.bush.getBoundingClientRect();
+      if (rect.right < 0) {
         this.position = 100;
       }
 

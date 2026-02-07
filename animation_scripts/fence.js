@@ -10,7 +10,7 @@ class Fence {
     if (!this.stop) {
       this.position -= 0.13;
 
-      if (this.position < window.innerWidth * -0.1) {
+      if (this.position < -100) {
         this.position = 0;
       }
 

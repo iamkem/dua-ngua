@@ -170,13 +170,26 @@ function initGame(roomId) {
     let map, finishLine;
     try {
         map = new Map();
-        finishLine = new FinishLine("finish-line", canvas.width);
+        finishLine = new FinishLine("finish-line");
     } catch (e) { }
 
+    // Helper to calculate horse size based on screen
+    function getHorseSize() {
+        const laneHeight = window.innerHeight / 8;
+        let size = laneHeight * 1.5;
+        if (size > 200) size = 200; // Cap max size
+        if (size < 60) size = 60;   // Cap min size
+        return size;
+    }
+
     const players = [];
+    const initialSize = getHorseSize();
     for (let i = 1; i <= 7; i++) {
         const yPos = (canvas.height / 8) * (i - 1) + 60;
-        players.push(new Player(0, yPos, 8 - i));
+        const p = new Player(0, yPos, 8 - i);
+        p.width = initialSize;
+        p.height = initialSize;
+        players.push(p);
     }
 
     // Game Logic Variables
@@ -435,8 +448,22 @@ function initGame(roomId) {
 
     // --- SHARED GAME FUNCTIONS ---
 
+    // --- SHARED GAME FUNCTIONS ---
+
+    // --- SOUND SYSTEM ---
+    const neighSound = new Audio("../assets/sounds/horse-neigh.mp3");
+
+    // Helper to stop sound safely
+    function stopAllGallops() {
+        players.forEach(p => {
+            if (p.stopAudio) p.stopAudio();
+        });
+    }
+
     window.resetHostGame = function () {
         console.log("Resetting Game...");
+        stopAllGallops(); // STOP ALL SOUNDS
+
         // 1. Reset Local State
         isRacing = false;
         isFinished = false;
@@ -446,7 +473,7 @@ function initGame(roomId) {
         // Reset Bet State Local
         myBetHorse = null;
         myBetAmount = 0;
-        document.getElementById("host-bet-btn").innerText = `Cược của tôi (${hostBalance}$)`;
+        document.getElementById("host-bet-btn").innerText = `Cược (${hostBalance}$)`;
         if (!isViewer) {
             document.getElementById("host-bet-btn").disabled = false;
         }
@@ -473,6 +500,7 @@ function initGame(roomId) {
         players.forEach(p => {
             p.x = 0;
             p.speed = 0;
+            if (p.stopAudio) p.stopAudio();
         });
         // Vẽ lại một khung hình tĩnh để ngựa về vạch xuất phát
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -500,6 +528,12 @@ function initGame(roomId) {
 
     function startRaceWithSeed(seed) {
         if (isRacing) return;
+
+        // PLAY SOUND for EACH horse
+        players.forEach(p => {
+            if (p.playAudio) p.playAudio();
+        });
+
         raceSeed = seed;
         currentRandom = mulberry32(raceSeed);
 
@@ -525,17 +559,20 @@ function initGame(roomId) {
 
             if (!isFinishApproaching && p.x > canvas.width * 0.7) isFinishApproaching = true;
 
-            if (isFinishApproaching && finishLine && p.x >= finishLine.positon) {
-                if (!isFinished) {
-                    // Client Viewer tự xử lý finish animation, tin tưởng Host update DB sau
-                    finishGame(p.number);
+            if (isFinishApproaching && finishLine) {
+                // Check va chạm với vạch đích
+                const finishX = finishLine.getPixelPosition();
+                if (p.x >= finishX) {
+                    if (!isFinished) {
+                        finishGame(p.number);
 
-                    // Chỉ Host mới update DB
-                    if (!isViewer) {
-                        db.collection("games").doc(roomId).update({
-                            status: "finished",
-                            winner: p.number
-                        });
+                        // Chỉ Host mới update DB
+                        if (!isViewer) {
+                            db.collection("games").doc(roomId).update({
+                                status: "finished",
+                                winner: p.number
+                            });
+                        }
                     }
                 }
             }
@@ -546,6 +583,9 @@ function initGame(roomId) {
         if (isFinished) return;
         isFinished = true;
         isRacing = false;
+
+        stopAllGallops(); // STOP ALL SOUNDS
+        neighSound.play().catch(e => console.log("Neigh sound failed:", e)); // PLAY NEIGH
 
         if (map) map.stopAnimation();
         if (finishLine) finishLine.stopAnimation();
@@ -565,7 +605,7 @@ function initGame(roomId) {
             }
             // Update balance UI & DB
             document.getElementById("host-balance-display").innerText = hostBalance;
-            document.getElementById("host-bet-btn").innerText = `Cược của tôi (${hostBalance}$)`;
+            document.getElementById("host-bet-btn").innerText = `Cược (${hostBalance}$)`;
 
             db.collection("games").doc(roomId).collection("players").doc("HOST").update({
                 balance: hostBalance,
@@ -599,11 +639,29 @@ function initGame(roomId) {
         requestAnimationFrame(mainLoop);
     }
 
+    // Auto Resize logic
+    window.addEventListener('resize', () => {
+        canvas.width = window.innerWidth;
+        canvas.height = window.innerHeight;
+
+        const newSize = getHorseSize();
+
+        // Re-calculate Y positions for players to match new height
+        players.forEach((p, index) => {
+            p.y = (canvas.height / 8) * index + 60;
+            p.width = newSize;
+            p.height = newSize;
+        });
+
+        // Redraw if static
+        if (!isRacing && !isFinished) {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            players.forEach(p => p.draw(ctx));
+        }
+    });
+
     // Start Loop
     requestAnimationFrame(mainLoop);
-
-    // Xóa logic restartBtn cũ đi vì ta xử lý ở index.html gọi resetHostGame
-
 }
 
 // Boot

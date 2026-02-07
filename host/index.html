@@ -68,8 +68,10 @@
 
     <div class="race-side align-content-center">
       <div id="race-box">
-        <canvas id="race-canvas" style="z-index: 1;"></canvas>
+        <canvas id="race-canvas" style="z-index: 10;"></canvas>
         <img id="road-lines" src="../assets/road-lines.png" alt="Road Lines" style="z-index: 2;" />
+        <img id="road-lines2" src="../assets/road-lines.png" alt="Road Lines"
+          style="z-index: 2; position: absolute; width: 100%; height: 100%; opacity: 0.3; top: 0; left: 0;" />
         <img id="finish-line" src="../assets/finish-line.png" alt="Finish Line" style="z-index: 2;" />
 
         <div id="game-hud"
@@ -86,7 +88,7 @@
               </ul>
             </div>
             <div class="d-grid gap-2">
-              <button id="host-bet-btn" class="btn btn-warning btn-lg fw-bold mb-2">Cược của tôi (1000$)</button>
+              <button id="host-bet-btn" class="btn btn-warning btn-lg fw-bold mb-2">Cược (1000$)</button>
               <button id="start-button" class="btn btn-success btn-lg fw-bold">BẮT ĐẦU ĐUA</button>
               <div class="d-flex justify-content-between align-items-center mt-2">
                 <span class="text-muted small">Mã phòng: <strong id="display-room-id">...</strong></span>
