@@ -193,11 +193,15 @@ function initGame(roomId) {
     }
 
     // Game Logic Variables
+    const VIRTUAL_TRACK_WIDTH = 800; // Track ảo cố định, không phụ thuộc screen size
+    const VIRTUAL_FINISH_POS = VIRTUAL_TRACK_WIDTH * 0.90; // Win khi ngựa qua vạch 1 chút
     let isRacing = false;
     let isFinished = false;
     let isFinishApproaching = false;
     let currentRandom = Math.random;
     let raceSeed = 0;
+    let finishLinePercent = 100;  // Vị trí % hiện tại của vạch đích
+    let finishLineSpeed = 0;      // Tốc độ trôi mỗi frame
 
     // Host Betting Variables
     let myBetHorse = null;
@@ -212,8 +216,9 @@ function initGame(roomId) {
     if (!isViewer) {
         initHostBetting(); // Setup betting UI
 
-        // Nút Start
+        // Nút Start - mặc định enable (host đua 1 mình)
         if (startButton) {
+            startButton.disabled = false;
             startButton.onclick = function () {
                 const seed = Date.now();
                 db.collection("games").doc(roomId).update({
@@ -247,18 +252,54 @@ function initGame(roomId) {
     db.collection("games").doc(roomId).collection("players").onSnapshot(snapshot => {
         const playerCount = snapshot.size;
         const playersList = [];
+        let clientCount = 0;
+        let readyCount = 0;
+
         snapshot.forEach(doc => {
             const p = doc.data();
-            const betInfo = p.betAmount > 0
-                ? `<span class="fw-bold text-success">Cược: ${p.betAmount}$ (#${p.betHorse})</span>`
-                : `<span class="text-muted fst-italic">Chưa cược</span>`;
-            playersList.push(`<li class="list-group-item d-flex justify-content-between"><strong>${p.name}</strong> ${betInfo}</li>`);
+            const isHost = p.isHost === true;
+
+            // Đếm client (không phải host)
+            if (!isHost) {
+                clientCount++;
+                if (p.ready) readyCount++;
+            }
+
+            // Hiển thị trạng thái
+            let statusInfo = '';
+            if (p.betAmount > 0) {
+                statusInfo = `<span class="fw-bold text-success">Cược: ${p.betAmount}$ (#${p.betHorse})</span>`;
+            } else if (!isHost && p.ready) {
+                statusInfo = `<span class="badge bg-success">Sẵn sàng</span>`;
+            } else if (!isHost) {
+                statusInfo = `<span class="badge bg-secondary">Chưa sẵn sàng</span>`;
+            } else {
+                statusInfo = `<span class="text-muted fst-italic">Chưa cược</span>`;
+            }
+            playersList.push(`<li class="list-group-item d-flex justify-content-between"><strong>${p.name}</strong> ${statusInfo}</li>`);
         });
 
         if (document.getElementById("player-count"))
             document.getElementById("player-count").innerText = playerCount;
         if (document.getElementById("connected-players-list"))
             document.getElementById("connected-players-list").innerHTML = playersList.join("") || '<li class="list-group-item text-muted text-center">Chờ người chơi...</li>';
+
+        // HOST: Kiểm tra điều kiện bắt đầu đua
+        if (!isViewer && startButton && !isRacing && !isFinished) {
+            if (clientCount === 0) {
+                // Không có client -> Host đua 1 mình
+                startButton.disabled = false;
+                startButton.innerText = "BẮT ĐẦU ĐUA (Solo)";
+            } else if (readyCount > 0) {
+                // Có client và ít nhất 1 đã sẵn sàng
+                startButton.disabled = false;
+                startButton.innerText = `BẮT ĐẦU ĐUA (${readyCount}/${clientCount} sẵn sàng)`;
+            } else {
+                // Có client nhưng chưa ai sẵn sàng
+                startButton.disabled = true;
+                startButton.innerText = `CHỜ NGƯỜI CHƠI SẴN SÀNG (0/${clientCount})`;
+            }
+        }
     });
 
     // --- VIEWER SPECIFIC UI TWEAKS ---
@@ -267,7 +308,34 @@ function initGame(roomId) {
         const hostBetBtn = document.getElementById("host-bet-btn");
         if (hostBetBtn) hostBetBtn.classList.add("d-none");
 
-        // 2. Đổi nút "Giải tán phòng" thành "Rời phòng"
+        // 2. Thêm nút Sẵn sàng cho Viewer
+        const readyBtn = document.createElement("button");
+        readyBtn.id = "viewer-ready-btn";
+        readyBtn.className = "btn btn-primary btn-lg fw-bold mb-2";
+        readyBtn.innerText = "SẴN SÀNG";
+        // Chèn trước nút start
+        const btnContainer = startButton ? startButton.parentElement : null;
+        if (btnContainer && startButton) {
+            btnContainer.insertBefore(readyBtn, startButton);
+        }
+
+        readyBtn.onclick = async function () {
+            const currentUser = sessionStorage.getItem("racing_user");
+            if (!currentUser) return;
+            try {
+                await db.collection("games").doc(roomId).collection("players").doc(currentUser).update({
+                    ready: true
+                });
+                readyBtn.disabled = true;
+                readyBtn.innerText = "ĐÃ SẴN SÀNG ✔";
+                readyBtn.className = "btn btn-success btn-lg fw-bold mb-2";
+            } catch (e) {
+                console.error("Lỗi sẵn sàng:", e);
+                alert("Lỗi: " + e.message);
+            }
+        };
+
+        // 3. Đổi nút "Giải tán phòng" thành "Rời phòng"
         const manageBtn = document.getElementById("manage-room-btn");
         if (manageBtn) {
             manageBtn.innerText = "Rời phòng";
@@ -432,6 +500,9 @@ function initGame(roomId) {
             console.log("Room Update:", data.status);
 
             if (data.status === "racing" && !isRacing) {
+                // Ẩn nút sẵn sàng khi đua bắt đầu
+                const readyBtn = document.getElementById("viewer-ready-btn");
+                if (readyBtn) readyBtn.style.display = "none";
                 const seed = data.seed || Date.now();
                 startRaceWithSeed(seed);
             }
@@ -469,6 +540,8 @@ function initGame(roomId) {
         isFinished = false;
         isFinishApproaching = false;
         raceSeed = 0;
+        finishLinePercent = 100;
+        finishLineSpeed = 0;
 
         // Reset Bet State Local
         myBetHorse = null;
@@ -504,7 +577,12 @@ function initGame(roomId) {
         });
         // Vẽ lại một khung hình tĩnh để ngựa về vạch xuất phát
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        players.forEach(p => p.draw(ctx));
+        players.forEach(p => {
+            const savedX = p.x;
+            p.x = (p.x / VIRTUAL_TRACK_WIDTH) * canvas.width;
+            p.draw(ctx);
+            p.x = savedX;
+        });
 
         // 4. Update Firebase
         if (!isViewer) {
@@ -519,7 +597,7 @@ function initGame(roomId) {
             db.collection("games").doc(roomId).collection("players").get().then(snapshot => {
                 const batch = db.batch();
                 snapshot.forEach(doc => {
-                    batch.update(doc.ref, { betAmount: 0, betHorse: null });
+                    batch.update(doc.ref, { betAmount: 0, betHorse: null, ready: false });
                 });
                 batch.commit().then(() => console.log("Đã reset cược của người chơi"));
             }).catch(console.error);
@@ -555,30 +633,54 @@ function initGame(roomId) {
         if (!isRacing || isFinished) return;
 
         players.forEach(p => {
-            p.move();
-            // Slow down the race (was * 3 + 2)
+            p.move(); // Di chuyển theo đơn vị ảo
             if (currentRandom() < 0.02) p.speed = (currentRandom() * 2) + 1;
 
-            if (!isFinishApproaching && p.x > canvas.width * 0.7) isFinishApproaching = true;
-
-            if (isFinishApproaching && finishLine) {
-                // Check va chạm với vạch đích
-                const finishX = finishLine.getPixelPosition();
-                if (p.x >= finishX) {
+            // Chỉ HOST mới xác định kết quả
+            if (!isViewer) {
+                if (p.x >= VIRTUAL_FINISH_POS) {
                     if (!isFinished) {
                         finishGame(p.number);
-
-                        // Chỉ Host mới update DB
-                        if (!isViewer) {
-                            db.collection("games").doc(roomId).update({
-                                status: "finished",
-                                winner: p.number
-                            });
-                        }
+                        db.collection("games").doc(roomId).update({
+                            status: "finished",
+                            winner: p.number
+                        });
                     }
                 }
             }
         });
+
+        // Tìm ngựa dẫn đầu
+        const leaderX = Math.max(...players.map(p => p.x));
+
+        // Vị trí vạch đích = đầu ngựa khi win (85% + horseWidth%)
+        const horseWidthPercent = (players[0].width / canvas.width) * 100;
+        const finishTargetPercent = 85 + horseWidthPercent;
+
+        // Tính trigger point: bắt đầu trôi sớm đủ để vạch đến kịp lúc
+        // Road speed = 0.13%/frame, cần trôi (100 - target)% 
+        const ROAD_SCROLL_SPEED = 0.13; // Cùng tốc độ road_lines.js
+        const framesNeeded = (100 - finishTargetPercent) / ROAD_SCROLL_SPEED;
+        // Ước tính leader trung bình di chuyển ~0.5 virtual/frame
+        const avgSpeed = 0.5;
+        const triggerPos = VIRTUAL_FINISH_POS - (framesNeeded * avgSpeed);
+        const approachStart = Math.max(triggerPos, VIRTUAL_TRACK_WIDTH * 0.5);
+
+        // Khi ngựa dẫn đầu đạt trigger point → bắt đầu animate vạch đích
+        if (leaderX > approachStart && finishLine) {
+            if (!isFinishApproaching) {
+                isFinishApproaching = true;
+                finishLinePercent = 100;
+                finishLineSpeed = ROAD_SCROLL_SPEED;
+            }
+
+            // Trôi đều mỗi frame - cùng tốc độ đường
+            finishLinePercent -= finishLineSpeed;
+            if (finishLinePercent < finishTargetPercent) finishLinePercent = finishTargetPercent;
+
+            finishLine.finishLine.style.opacity = 1;
+            finishLine.finishLine.style.left = finishLinePercent + "%";
+        }
     }
 
     async function finishGame(winnerId) {
@@ -676,11 +778,17 @@ function initGame(roomId) {
 
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-        if (isRacing && isFinishApproaching && finishLine) finishLine.animate();
+        if (isRacing && isFinishApproaching && finishLine) {
+            // Finish line đã được sync trong updateGameLogic, không cần animate riêng
+        }
 
+        // Scale virtual coords → screen coords khi vẽ
         players.forEach(p => {
             p.update();
+            const savedX = p.x;
+            p.x = (p.x / VIRTUAL_TRACK_WIDTH) * canvas.width;
             p.draw(ctx);
+            p.x = savedX; // Khôi phục virtual coords
         });
 
         requestAnimationFrame(mainLoop);
@@ -703,7 +811,12 @@ function initGame(roomId) {
         // Redraw if static
         if (!isRacing && !isFinished) {
             ctx.clearRect(0, 0, canvas.width, canvas.height);
-            players.forEach(p => p.draw(ctx));
+            players.forEach(p => {
+                const savedX = p.x;
+                p.x = (p.x / VIRTUAL_TRACK_WIDTH) * canvas.width;
+                p.draw(ctx);
+                p.x = savedX;
+            });
         }
     });
 
