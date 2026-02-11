@@ -194,7 +194,7 @@ function initGame(roomId) {
 
     // Game Logic Variables
     const VIRTUAL_TRACK_WIDTH = 800; // Track ảo cố định, không phụ thuộc screen size
-    const VIRTUAL_FINISH_POS = VIRTUAL_TRACK_WIDTH * 0.90; // Win khi ngựa qua vạch 1 chút
+    const VIRTUAL_FINISH_POS = VIRTUAL_TRACK_WIDTH * 0.85; // Win khi ngựa qua vạch 1 chút
     let isRacing = false;
     let isFinished = false;
     let isFinishApproaching = false;
@@ -655,7 +655,7 @@ function initGame(roomId) {
 
         // Vị trí vạch đích = đầu ngựa khi win (85% + horseWidth%)
         const horseWidthPercent = (players[0].width / canvas.width) * 100;
-        const finishTargetPercent = 85 + horseWidthPercent;
+        const finishTargetPercent = 70 + horseWidthPercent;
 
         // Tính trigger point: bắt đầu trôi sớm đủ để vạch đến kịp lúc
         // Road speed = 0.13%/frame, cần trôi (100 - target)% 

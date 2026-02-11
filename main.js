@@ -1,6 +1,8 @@
-const { app, BrowserWindow, ipcMain } = require("electron");
+const { app, BrowserWindow, ipcMain, globalShortcut } = require("electron");
 const path = require("path");
 const Store = require("electron-store");
+
+const isDev = !app.isPackaged;
 
 let mainWindow;
 
@@ -10,15 +12,18 @@ const createMainWindow = () => {
     height: 768,
     fullscreen: false,
     webPreferences: {
-      nodeIntegration: true, // Cho phép sử dụng Node.js trong renderer process
-      contextIsolation: false, // Tắt context isolation
+      nodeIntegration: true,
+      contextIsolation: false,
+      devTools: isDev, // Chặn DevTools hoàn toàn khi production
       preload: path.join(__dirname, "preload.js"),
     },
   });
 
   mainWindow.loadFile("index.html");
 
-  // mainWindow.webContents.openDevTools();
+  if (isDev) {
+    mainWindow.webContents.openDevTools();
+  }
 
   mainWindow.on("closed", () => {
     mainWindow = null;
