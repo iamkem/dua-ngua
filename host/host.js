@@ -540,7 +540,7 @@ function initGame(roomId) {
         isFinished = false;
         isFinishApproaching = false;
         raceSeed = 0;
-        finishLinePercent = 100;
+        finishLinePercent = 105;
         finishLineSpeed = 0;
 
         // Reset Bet State Local
@@ -632,13 +632,25 @@ function initGame(roomId) {
     function updateGameLogic() {
         if (!isRacing || isFinished) return;
 
+        // Tính vị trí vạch đích theo pixel (nếu đã bắt đầu hiện)
+        // Vạch đích dùng left: % nên vị trí pixel = finishLinePercent% * canvas.width
+        const finishLinePixelX = isFinishApproaching
+            ? (finishLinePercent / 100) * canvas.width
+            : canvas.width * 1.05; // Nếu chưa hiện thì ở ngoài mép phải
+
         players.forEach(p => {
             p.move(); // Di chuyển theo đơn vị ảo
             if (currentRandom() < 0.02) p.speed = (currentRandom() * 2) + 1;
 
             // Chỉ HOST mới xác định kết quả
             if (!isViewer) {
-                if (p.x >= VIRTUAL_FINISH_POS) {
+                // Chuyển vị trí ảo của ngựa sang pixel
+                const horsePixelX = (p.x / VIRTUAL_TRACK_WIDTH) * canvas.width;
+                // Đầu ngựa chạm vạch đích (cộng thêm 1/3 width để phù hợp với sprite)
+                const horseHeadX = horsePixelX + (p.width * 0.7);
+
+                // Kiểm tra va chạm: đầu ngựa phải chạm/vượt qua vạch đích
+                if (isFinishApproaching && horseHeadX >= finishLinePixelX) {
                     if (!isFinished) {
                         finishGame(p.number);
                         db.collection("games").doc(roomId).update({
@@ -650,35 +662,26 @@ function initGame(roomId) {
             }
         });
 
-        // Tìm ngựa dẫn đầu
+        // Tìm ngựa dẫn đầu (theo tọa độ ảo để đồng bộ giữa các clients)
         const leaderX = Math.max(...players.map(p => p.x));
 
-        // Vị trí vạch đích = đầu ngựa khi win (85% + horseWidth%)
-        const horseWidthPercent = (players[0].width / canvas.width) * 100;
-        const finishTargetPercent = 70 + horseWidthPercent;
-
-        // Tính trigger point: bắt đầu trôi sớm đủ để vạch đến kịp lúc
-        // Road speed = 0.13%/frame, cần trôi (100 - target)% 
-        const ROAD_SCROLL_SPEED = 0.13; // Cùng tốc độ road_lines.js
-        const framesNeeded = (100 - finishTargetPercent) / ROAD_SCROLL_SPEED;
-        // Ước tính leader trung bình di chuyển ~0.5 virtual/frame
-        const avgSpeed = 0.5;
-        const triggerPos = VIRTUAL_FINISH_POS - (framesNeeded * avgSpeed);
-        const approachStart = Math.max(triggerPos, VIRTUAL_TRACK_WIDTH * 0.5);
+        // Vạch đích hiện ra khi ngựa đã chạy được ~75% đường đua ảo
+        // Điều này đảm bảo tất cả clients đều hiện vạch đích cùng lúc
+        // bất kể kích thước màn hình
+        const approachStartVirtual = VIRTUAL_TRACK_WIDTH * 0.75;
 
         // Khi ngựa dẫn đầu đạt trigger point → bắt đầu animate vạch đích
-        if (leaderX > approachStart && finishLine) {
+        if (leaderX > approachStartVirtual && finishLine) {
             if (!isFinishApproaching) {
                 isFinishApproaching = true;
-                finishLinePercent = 100;
-                finishLineSpeed = ROAD_SCROLL_SPEED;
+                finishLinePercent = 105; // Bắt đầu từ ngoài mép phải
             }
 
-            // Trôi đều mỗi frame - cùng tốc độ đường
-            finishLinePercent -= finishLineSpeed;
-            if (finishLinePercent < finishTargetPercent) finishLinePercent = finishTargetPercent;
+            // Vạch đích trôi cùng tốc độ với đường đua (0.13%/frame)
+            finishLinePercent -= 0.13;
 
             finishLine.finishLine.style.opacity = 1;
+            // Dùng left thay vì transform để dễ tính toán va chạm
             finishLine.finishLine.style.left = finishLinePercent + "%";
         }
     }
@@ -700,14 +703,13 @@ function initGame(roomId) {
 
         // --- HOST WIN LOGIC ---
         if (!isViewer && myBetHorse) {
+            let winMsg = "";
             if (myBetHorse === winnerId) {
                 const win = myBetAmount * 5;
                 hostBalance += win;
-                alert(`Host thắng ${win}$!`);
-            } else {
-                // Host thua
+                winMsg = `Host thắng ${win}$!`;
             }
-            // Update balance UI & DB
+            // Update balance UI & DB trước khi alert
             document.getElementById("host-balance-display").innerText = formatBalance(hostBalance);
             document.getElementById("host-bet-btn").innerText = `Cược (${hostBalance}$)`;
 
@@ -717,6 +719,8 @@ function initGame(roomId) {
                     betAmount: 0,
                     betHorse: null
                 });
+                // Chỉ hiện alert sau khi đã cập nhật DB xong
+                if (winMsg) alert(winMsg);
             } catch (e) {
                 console.error("Lỗi cập nhật balance Host:", e);
             }

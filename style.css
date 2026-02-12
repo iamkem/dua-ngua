@@ -49,6 +49,9 @@ body {
   height: 150%;
   top: -15%;
   z-index: 1;
+  left: 105%; /* Bắt đầu từ ngoài mép phải một chút */
+  opacity: 0;
+  transition: none; /* Không dùng transition để animation mượt */
 }
 #race-box {
   width: 100%;

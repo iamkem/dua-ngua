@@ -37,7 +37,8 @@ class FinishLine {
     this.stop = false;
     this.position = this.initialPosition;
     this.finishLine.style.opacity = 0;
-    this.finishLine.style.left = "100%";
+    this.finishLine.style.left = "105%";
+    this.finishLine.style.transform = "none";
   }
 }
 
